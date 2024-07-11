@@ -1,4 +1,4 @@
-# this repo is forked from:
+# This repo is forked from:
 
 https://github.com/patrickloeber/snake-ai-pytorch
 
