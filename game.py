@@ -1,12 +1,15 @@
+from lib.dotenvload import os
 import pygame
 import random
 from enum import Enum
 from collections import namedtuple
 import numpy as np
+from lib.config import IS_GAME_RENDERED, BLOCK_SIZE, SPEED
 
-pygame.init()
-font = pygame.font.Font('arial.ttf', 25)
-#font = pygame.font.SysFont('arial', 25)
+if(IS_GAME_RENDERED):
+    pygame.init()
+    font = pygame.font.Font('arial.ttf', 25)
+    #font = pygame.font.SysFont('arial', 25)
 
 class Direction(Enum):
     RIGHT = 1
@@ -19,12 +22,11 @@ Point = namedtuple('Point', 'x, y')
 # rgb colors
 WHITE = (255, 255, 255)
 RED = (200,0,0)
+GREEN = (0,200,0)
 BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
 
-BLOCK_SIZE = 20
-SPEED = 40
 
 class SnakeGameAI:
 
@@ -32,9 +34,10 @@ class SnakeGameAI:
         self.w = w
         self.h = h
         # init display
-        self.display = pygame.display.set_mode((self.w, self.h))
-        pygame.display.set_caption('Snake')
-        self.clock = pygame.time.Clock()
+        if(IS_GAME_RENDERED):
+            self.display = pygame.display.set_mode((self.w, self.h))
+            pygame.display.set_caption('Snake')
+            self.clock = pygame.time.Clock()
         self.reset()
 
 
@@ -64,10 +67,11 @@ class SnakeGameAI:
     def play_step(self, action):
         self.frame_iteration += 1
         # 1. collect user input
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+        if(IS_GAME_RENDERED):
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
         
         # 2. move
         self._move(action) # update the head
@@ -90,31 +94,115 @@ class SnakeGameAI:
             self.snake.pop()
         
         # 5. update ui and clock
-        self._update_ui()
-        self.clock.tick(SPEED)
+        if(IS_GAME_RENDERED):
+            self._update_ui()
+            self.clock.tick(SPEED)
         # 6. return game over and score
         return reward, game_over, self.score
 
 
-    def is_collision(self, pt=None):
-        if pt is None:
-            pt = self.head
+    def is_collision(self):
+        pt = self.head
+        
         # hits boundary
         if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
             return True
+                    
         # hits itself
         if pt in self.snake[1:]:
             return True
 
         return False
+    
+    def is_collision_predict(self, pt, headingPt, head):
+
+        # hits boundary
+        if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
+            return True
+        
+        if pt == headingPt:
+            return False
+        
+        if not headingPt:
+            return False
+        
+        if(pt.x < head.x and pt.y == head.y):
+            if(headingPt.y < head.y):
+                # print('left heading up')
+                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
+            else:
+                # print('left heading down')
+                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
+
+            if diagonalPoint in self.snake[1:]:
+                for leftVal in range(int(pt.x), 0, BLOCK_SIZE):
+                    leftPt = Point(leftVal, pt.y)
+                    if leftPt in self.snake[1:]:
+                        # print("left")
+                        return True
+
+        if(pt.x > head.x and pt.y == head.y):
+            if(headingPt.y < head.y):
+                # print('right heading up')
+                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
+            else:
+                # print('right heading down')
+                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
+                
+            if diagonalPoint in self.snake[1:]:
+                for rightVal in range(int(pt.x), self.w * BLOCK_SIZE, BLOCK_SIZE):
+                    rightPt = Point(rightVal, pt.y)
+                    if rightPt in self.snake[1:]:
+                        # print("right")
+                        return True
+        
+        if(pt.x == head.x and pt.y < head.y):
+            if(headingPt.x < head.x):
+                # print('up heading left')
+                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
+            else:
+                # print('up heading right')
+                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
+                
+            if diagonalPoint in self.snake[1:]:
+                for upVal in range(int(pt.y) * BLOCK_SIZE, 0, BLOCK_SIZE):
+                    upPt = Point(pt.x, upVal)
+                    if upPt in self.snake[1:]:
+                        # print("up")
+                        return True
+        
+        if(pt.x == head.x and pt.y > head.y):
+            if(headingPt.x < head.x):
+                # print('down heading left')
+                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
+            else:
+                # print('down heading right')
+                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
+                
+            if diagonalPoint in self.snake[1:]:
+                for downVal in range(int(pt.y) * BLOCK_SIZE, self.h * BLOCK_SIZE, BLOCK_SIZE):
+                    downPt = Point(pt.x, downVal)
+                    if downPt in self.snake[1:]:
+                        # print("down")
+                        return True
+                    
+        # hits itself
+        if pt in self.snake[1:]:
+            return True
+
+        return False
+    
 
 
     def _update_ui(self):
         self.display.fill(BLACK)
 
         for pt in self.snake:
-            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
-            pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, 12, 12))
+            if pt == self.head:
+                pygame.draw.rect(self.display, GREEN, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            else:
+                pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+                pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, 12, 12))
 
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 

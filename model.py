@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import numpy as np
+from lib.config import TORCH_DEVICE
 import os
 
 class Linear_QNet(nn.Module):
@@ -22,6 +24,14 @@ class Linear_QNet(nn.Module):
 
         file_name = os.path.join(model_folder_path, file_name)
         torch.save(self.state_dict(), file_name)
+        
+    # Method to load the model state
+    def load(self, file_name='model.pth'):
+        model_folder_path = './model'
+        file_name = os.path.join(model_folder_path, file_name)
+        if(os.path.exists(file_name) != False):
+            self.load_state_dict(torch.load(file_name, map_location=TORCH_DEVICE))
+
 
 
 class QTrainer:
@@ -29,14 +39,18 @@ class QTrainer:
         self.lr = lr
         self.gamma = gamma
         self.model = model
+        
+        self.model = self.model.to(TORCH_DEVICE)
+        self.model.load()
+
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
         self.criterion = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, done):
-        state = torch.tensor(state, dtype=torch.float)
-        next_state = torch.tensor(next_state, dtype=torch.float)
-        action = torch.tensor(action, dtype=torch.long)
-        reward = torch.tensor(reward, dtype=torch.float)
+        state = torch.tensor(np.array(state), dtype=torch.float).to(TORCH_DEVICE)
+        next_state = torch.tensor(np.array(next_state), dtype=torch.float).to(TORCH_DEVICE)
+        action = torch.tensor(np.array(action), dtype=torch.long).to(TORCH_DEVICE)
+        reward = torch.tensor(np.array(reward), dtype=torch.float).to(TORCH_DEVICE)
         # (n, x)
 
         if len(state.shape) == 1:

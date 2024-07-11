@@ -5,16 +5,13 @@ from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
+from lib.config import IS_PLOT_RENDERED, IS_GAME_RENDERED, TORCH_DEVICE, MAX_MEMORY, BATCH_SIZE, LR, EPSILON
 
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.001
 
 class Agent:
 
     def __init__(self):
         self.n_games = 0
-        self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
         self.model = Linear_QNet(11, 256, 3)
@@ -23,49 +20,43 @@ class Agent:
 
     def get_state(self, game):
         head = game.snake[0]
-        point_l = Point(head.x - 20, head.y)
-        point_r = Point(head.x + 20, head.y)
-        point_u = Point(head.x, head.y - 20)
-        point_d = Point(head.x, head.y + 20)
-        
-        dir_l = game.direction == Direction.LEFT
-        dir_r = game.direction == Direction.RIGHT
-        dir_u = game.direction == Direction.UP
-        dir_d = game.direction == Direction.DOWN
 
+        # Clok-wise directions and angles
+        cw_dirs = [
+          Direction.RIGHT == game.direction, 
+          Direction.DOWN == game.direction,
+          Direction.LEFT == game.direction,
+          Direction.UP == game.direction
+          ]
+        cw_angs = np.array([0, np.pi/2, np.pi, -np.pi/2])
+
+        # Position - in front: 0, on right: 1, on left: -1; BLOCK_SIZE = 20
+        getPoint = lambda pos: Point(
+          head.x + 20*np.cos(cw_angs[(cw_dirs.index(True)+pos) % 4]),
+          head.y + 20*np.sin(cw_angs[(cw_dirs.index(True)+pos) % 4]))
+
+        headingPoint = getPoint(0)
         state = [
-            # Danger straight
-            (dir_r and game.is_collision(point_r)) or 
-            (dir_l and game.is_collision(point_l)) or 
-            (dir_u and game.is_collision(point_u)) or 
-            (dir_d and game.is_collision(point_d)),
+          # Danger
+          game.is_collision_predict(headingPoint, headingPoint, head),
+          game.is_collision_predict(getPoint(1), headingPoint, head),
+          game.is_collision_predict(getPoint(-1), headingPoint, head),
 
-            # Danger right
-            (dir_u and game.is_collision(point_r)) or 
-            (dir_d and game.is_collision(point_l)) or 
-            (dir_l and game.is_collision(point_u)) or 
-            (dir_r and game.is_collision(point_d)),
+          # Move direction
+          cw_dirs[2],
+          cw_dirs[0],
+          cw_dirs[3],
+          cw_dirs[1],
 
-            # Danger left
-            (dir_d and game.is_collision(point_r)) or 
-            (dir_u and game.is_collision(point_l)) or 
-            (dir_r and game.is_collision(point_u)) or 
-            (dir_l and game.is_collision(point_d)),
-            
-            # Move direction
-            dir_l,
-            dir_r,
-            dir_u,
-            dir_d,
-            
-            # Food location 
-            game.food.x < game.head.x,  # food left
-            game.food.x > game.head.x,  # food right
-            game.food.y < game.head.y,  # food up
-            game.food.y > game.head.y  # food down
-            ]
+          # Food location
+          game.food.x < head.x,
+          game.food.x > head.x,
+          game.food.y < head.y,
+          game.food.y > head.y
+        ]
 
         return np.array(state, dtype=int)
+
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
@@ -86,15 +77,15 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 80 - self.n_games
+        eps = EPSILON - self.n_games
         final_move = [0,0,0]
-        if random.randint(0, 200) < self.epsilon:
+        if eps > 0 and random.randint(0, EPSILON * 2) < eps:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
-            state0 = torch.tensor(state, dtype=torch.float)
+            state0 = torch.tensor(state, dtype=torch.float).to(TORCH_DEVICE)
             prediction = self.model(state0)
-            move = torch.argmax(prediction).item()
+            move = torch.argmax(prediction).to(TORCH_DEVICE).item()
             final_move[move] = 1
 
         return final_move
@@ -124,18 +115,23 @@ def train():
         # remember
         agent.remember(state_old, final_move, reward, state_new, done)
 
-        if done:
-            # train long memory, plot result
-            game.reset()
-            agent.n_games += 1
-            agent.train_long_memory()
+        if not done:
+            continue
+        
+        # train long memory, plot result
+        game.reset()
+        agent.n_games += 1
+        agent.train_long_memory()
 
-            if score > record:
-                record = score
-                agent.model.save()
+        if score > record:
+            record = score
+            agent.model.save()
+        elif agent.n_games % 100 == 0:
+            agent.model.save()
 
-            print('Game', agent.n_games, 'Score', score, 'Record:', record)
+        print('Game', agent.n_games, 'Score', score, 'Record:', record)
 
+        if IS_PLOT_RENDERED:
             plot_scores.append(score)
             total_score += score
             mean_score = total_score / agent.n_games
