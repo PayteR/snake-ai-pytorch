@@ -56,7 +56,7 @@ class Agent:
         ]
 
         return np.array(state, dtype=int)
-
+ 
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
@@ -83,9 +83,9 @@ class Agent:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
-            state0 = torch.tensor(state, dtype=torch.float).to(TORCH_DEVICE)
+            state0 = torch.tensor(state, dtype=torch.float, device=TORCH_DEVICE)
             prediction = self.model(state0)
-            move = torch.argmax(prediction).to(TORCH_DEVICE).item()
+            move = torch.argmax(prediction).item()
             final_move[move] = 1
 
         return final_move
