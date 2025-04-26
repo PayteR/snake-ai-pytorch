@@ -126,65 +126,65 @@ class SnakeGameAI:
         if not headingPt:
             return False
         
-        if(pt.x < head.x and pt.y == head.y):
-            if(headingPt.y < head.y):
-                # print('left heading up')
-                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
-            else:
-                # print('left heading down')
-                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
+        # if(pt.x < head.x and pt.y == head.y):
+        #     if(headingPt.y < head.y):
+        #         # print('left heading up')
+        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
+        #     else:
+        #         # print('left heading down')
+        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
 
-            if diagonalPoint in self.snake[1:]:
-                for leftVal in range(int(pt.x), 0, BLOCK_SIZE):
-                    leftPt = Point(leftVal, pt.y)
-                    if leftPt in self.snake[1:]:
-                        # print("left")
-                        return True
+        #     if diagonalPoint in self.snake[1:]:
+        #         for leftVal in range(int(pt.x), 0, BLOCK_SIZE):
+        #             leftPt = Point(leftVal, pt.y)
+        #             if leftPt in self.snake[1:]:
+        #                 # print("left")
+        #                 return True
 
-        if(pt.x > head.x and pt.y == head.y):
-            if(headingPt.y < head.y):
-                # print('right heading up')
-                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
-            else:
-                # print('right heading down')
-                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
+        # if(pt.x > head.x and pt.y == head.y):
+        #     if(headingPt.y < head.y):
+        #         # print('right heading up')
+        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
+        #     else:
+        #         # print('right heading down')
+        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
                 
-            if diagonalPoint in self.snake[1:]:
-                for rightVal in range(int(pt.x), self.w * BLOCK_SIZE, BLOCK_SIZE):
-                    rightPt = Point(rightVal, pt.y)
-                    if rightPt in self.snake[1:]:
-                        # print("right")
-                        return True
+        #     if diagonalPoint in self.snake[1:]:
+        #         for rightVal in range(int(pt.x), self.w * BLOCK_SIZE, BLOCK_SIZE):
+        #             rightPt = Point(rightVal, pt.y)
+        #             if rightPt in self.snake[1:]:
+        #                 # print("right")
+        #                 return True
         
-        if(pt.x == head.x and pt.y < head.y):
-            if(headingPt.x < head.x):
-                # print('up heading left')
-                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
-            else:
-                # print('up heading right')
-                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
+        # if(pt.x == head.x and pt.y < head.y):
+        #     if(headingPt.x < head.x):
+        #         # print('up heading left')
+        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
+        #     else:
+        #         # print('up heading right')
+        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
                 
-            if diagonalPoint in self.snake[1:]:
-                for upVal in range(int(pt.y) * BLOCK_SIZE, 0, BLOCK_SIZE):
-                    upPt = Point(pt.x, upVal)
-                    if upPt in self.snake[1:]:
-                        # print("up")
-                        return True
+        #     if diagonalPoint in self.snake[1:]:
+        #         for upVal in range(int(pt.y) * BLOCK_SIZE, 0, BLOCK_SIZE):
+        #             upPt = Point(pt.x, upVal)
+        #             if upPt in self.snake[1:]:
+        #                 # print("up")
+        #                 return True
         
-        if(pt.x == head.x and pt.y > head.y):
-            if(headingPt.x < head.x):
-                # print('down heading left')
-                diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
-            else:
-                # print('down heading right')
-                diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
+        # if(pt.x == head.x and pt.y > head.y):
+        #     if(headingPt.x < head.x):
+        #         # print('down heading left')
+        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
+        #     else:
+        #         # print('down heading right')
+        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
                 
-            if diagonalPoint in self.snake[1:]:
-                for downVal in range(int(pt.y) * BLOCK_SIZE, self.h * BLOCK_SIZE, BLOCK_SIZE):
-                    downPt = Point(pt.x, downVal)
-                    if downPt in self.snake[1:]:
-                        # print("down")
-                        return True
+        #     if diagonalPoint in self.snake[1:]:
+        #         for downVal in range(int(pt.y) * BLOCK_SIZE, self.h * BLOCK_SIZE, BLOCK_SIZE):
+        #             downPt = Point(pt.x, downVal)
+        #             if downPt in self.snake[1:]:
+        #                 # print("down")
+        #                 return True
                     
         # hits itself
         if pt in self.snake[1:]:
