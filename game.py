@@ -33,6 +33,8 @@ class SnakeGameAI:
     def __init__(self, w=640, h=480):
         self.w = w
         self.h = h
+        self.grid_h = self.h // BLOCK_SIZE
+        self.grid_w = self.w // BLOCK_SIZE
         # init display
         if(IS_GAME_RENDERED):
             self.display = pygame.display.set_mode((self.w, self.h))
@@ -45,7 +47,11 @@ class SnakeGameAI:
         # init game state
         self.direction = Direction.RIGHT
 
-        self.head = Point(self.w/2, self.h/2)
+        # Place head in the center, ensuring it's aligned with the grid
+        center_x = (self.grid_w // 2) * BLOCK_SIZE
+        center_y = (self.grid_h // 2) * BLOCK_SIZE
+        self.head = Point(center_x, center_y)
+
         self.snake = [self.head,
                       Point(self.head.x-BLOCK_SIZE, self.head.y),
                       Point(self.head.x-(2*BLOCK_SIZE), self.head.y)]
@@ -57,141 +63,97 @@ class SnakeGameAI:
 
 
     def _place_food(self):
-        x = random.randint(0, (self.w-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE
-        y = random.randint(0, (self.h-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE
+        # Place food randomly on the grid
+        x = random.randint(0, self.grid_w - 1) * BLOCK_SIZE
+        y = random.randint(0, self.grid_h - 1) * BLOCK_SIZE
         self.food = Point(x, y)
+        # Ensure food is not placed inside the snake
         if self.food in self.snake:
             self._place_food()
 
 
     def play_step(self, action):
         self.frame_iteration += 1
-        # 1. collect user input
-        if(IS_GAME_RENDERED):
+        # 1. collect user input (only relevant if rendering/debugging)
+        if IS_GAME_RENDERED:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     quit()
-        
+
         # 2. move
         self._move(action) # update the head
         self.snake.insert(0, self.head)
-        
+
         # 3. check if game over
         reward = 0
         game_over = False
-        if self.is_collision() or self.frame_iteration > 100*len(self.snake):
+        # Increase penalty for collision, consider adding penalty for long survival without eating
+        # Add check for frame iteration limit to prevent infinite loops
+        if self.is_collision() or self.frame_iteration > 100 * len(self.snake): # Increased timeout factor
             game_over = True
-            reward = -10
+            reward = -10 # Keep penalty for dying
             return reward, game_over, self.score
 
         # 4. place new food or just move
         if self.head == self.food:
             self.score += 1
-            reward = 10
+            reward = 10 # Reward for eating food
             self._place_food()
         else:
             self.snake.pop()
-        
+            # Optional: Small penalty for each step to encourage faster eating
+            # reward = -0.01
+
         # 5. update ui and clock
-        if(IS_GAME_RENDERED):
+        if IS_GAME_RENDERED:
             self._update_ui()
             self.clock.tick(SPEED)
         # 6. return game over and score
         return reward, game_over, self.score
 
 
-    def is_collision(self):
-        pt = self.head
-        
+    def is_collision(self, pt=None):
+        if pt is None:
+            pt = self.head
         # hits boundary
-        if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
+        if pt.x >= self.w or pt.x < 0 or pt.y >= self.h or pt.y < 0:
             return True
-                    
         # hits itself
         if pt in self.snake[1:]:
             return True
-
         return False
-    
-    def is_collision_predict(self, pt, headingPt, head):
 
-        # hits boundary
-        if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
-            return True
-        
-        if pt == headingPt:
-            return False
-        
-        if not headingPt:
-            return False
-        
-        # if(pt.x < head.x and pt.y == head.y):
-        #     if(headingPt.y < head.y):
-        #         # print('left heading up')
-        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
-        #     else:
-        #         # print('left heading down')
-        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
+    def get_state_image(self):
+        """
+        Returns a 2D numpy array representing the game state.
+        Pixel values: 0: empty, 0.25: food, 0.5: snake tail, 0.75: snake body, 1.0: snake head
+        """
+        # Initialize grid with zeros (empty)
+        image = np.zeros((self.grid_h, self.grid_w), dtype=np.float32)
 
-        #     if diagonalPoint in self.snake[1:]:
-        #         for leftVal in range(int(pt.x), 0, BLOCK_SIZE):
-        #             leftPt = Point(leftVal, pt.y)
-        #             if leftPt in self.snake[1:]:
-        #                 # print("left")
-        #                 return True
+        # Place food (ensure coordinates are within grid bounds)
+        food_x_grid, food_y_grid = int(self.food.x // BLOCK_SIZE), int(self.food.y // BLOCK_SIZE)
+        if 0 <= food_y_grid < self.grid_h and 0 <= food_x_grid < self.grid_w:
+             image[food_y_grid, food_x_grid] = 0.25
 
-        # if(pt.x > head.x and pt.y == head.y):
-        #     if(headingPt.y < head.y):
-        #         # print('right heading up')
-        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
-        #     else:
-        #         # print('right heading down')
-        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
-                
-        #     if diagonalPoint in self.snake[1:]:
-        #         for rightVal in range(int(pt.x), self.w * BLOCK_SIZE, BLOCK_SIZE):
-        #             rightPt = Point(rightVal, pt.y)
-        #             if rightPt in self.snake[1:]:
-        #                 # print("right")
-        #                 return True
-        
-        # if(pt.x == head.x and pt.y < head.y):
-        #     if(headingPt.x < head.x):
-        #         # print('up heading left')
-        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y - BLOCK_SIZE)
-        #     else:
-        #         # print('up heading right')
-        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y - BLOCK_SIZE)
-                
-        #     if diagonalPoint in self.snake[1:]:
-        #         for upVal in range(int(pt.y) * BLOCK_SIZE, 0, BLOCK_SIZE):
-        #             upPt = Point(pt.x, upVal)
-        #             if upPt in self.snake[1:]:
-        #                 # print("up")
-        #                 return True
-        
-        # if(pt.x == head.x and pt.y > head.y):
-        #     if(headingPt.x < head.x):
-        #         # print('down heading left')
-        #         diagonalPoint = Point(head.x - BLOCK_SIZE, head.y + BLOCK_SIZE)
-        #     else:
-        #         # print('down heading right')
-        #         diagonalPoint = Point(head.x + BLOCK_SIZE, head.y + BLOCK_SIZE)
-                
-        #     if diagonalPoint in self.snake[1:]:
-        #         for downVal in range(int(pt.y) * BLOCK_SIZE, self.h * BLOCK_SIZE, BLOCK_SIZE):
-        #             downPt = Point(pt.x, downVal)
-        #             if downPt in self.snake[1:]:
-        #                 # print("down")
-        #                 return True
-                    
-        # hits itself
-        if pt in self.snake[1:]:
-            return True
+        # Place snake body and tail
+        for i, pt in enumerate(self.snake):
+            body_x_grid, body_y_grid = int(pt.x // BLOCK_SIZE), int(pt.y // BLOCK_SIZE)
+            if 0 <= body_y_grid < self.grid_h and 0 <= body_x_grid < self.grid_w:
+                if i == len(self.snake) - 1: # Tail
+                    image[body_y_grid, body_x_grid] = 0.5
+                elif i > 0: # Body segment (excluding head)
+                    image[body_y_grid, body_x_grid] = 0.75
 
-        return False
-    
+        # Place snake head (ensure coordinates are within grid bounds)
+        head_x_grid, head_y_grid = int(self.head.x // BLOCK_SIZE), int(self.head.y // BLOCK_SIZE)
+        if 0 <= head_y_grid < self.grid_h and 0 <= head_x_grid < self.grid_w:
+            image[head_y_grid, head_x_grid] = 1.0
+
+        # Add channel dimension (C, H, W) - PyTorch expects channels first
+        image = np.expand_dims(image, axis=0)
+        return image
 
 
     def _update_ui(self):

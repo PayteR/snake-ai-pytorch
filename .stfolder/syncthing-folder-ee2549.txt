@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: SnakeAI
+created: 2025-04-26T19:20:29+02:00
